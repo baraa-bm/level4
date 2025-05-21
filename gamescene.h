@@ -21,6 +21,7 @@ protected:
 
 private slots:
     void update();  // Game loop function
+    void resetPlayer();
     void movePlatforms();
 
 private:

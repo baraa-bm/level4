@@ -103,7 +103,6 @@ void GameScene::createPlatforms(int sceneNumber)
 
     if (sceneNumber == 1) {
         // Static platforms
-        // platform with either coin or enemy
         QGraphicsRectItem* platform4 = new QGraphicsRectItem(500, 200, 225, 65);
         QLinearGradient platform4Gradient(600, 350, 600, 370);
         platform4Gradient.setColorAt(0, QColor(120, 80, 50));
@@ -112,7 +111,6 @@ void GameScene::createPlatforms(int sceneNumber)
         platform4->setPen(QPen(QColor(70, 50, 30), 1));
         addItem(platform4);
 
-        // platform with spikes
         QGraphicsRectItem* platform5 = new QGraphicsRectItem(125, 250, 246, 40);
         QLinearGradient platform5Gradient(200, 250, 200, 270);
         platform5Gradient.setColorAt(0, QColor(120, 80, 50));
@@ -129,7 +127,6 @@ void GameScene::createPlatforms(int sceneNumber)
         platform1->setPen(QPen(QColor(70, 50, 30), 1));
         addItem(platform1);
 
-        // bottom platforms with a gap in the middle
         QGraphicsRectItem* platform10 = new QGraphicsRectItem(0, 400, 200, 20);
         QLinearGradient platform10Gradient(100, 400, 100, 420);
         platform10Gradient.setColorAt(0, QColor(120, 80, 50));
@@ -172,7 +169,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(125 + i * 20, 230); // On platform 2
+            spike->setPos(125 + i * 20, 230);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -184,7 +181,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(675 + i * 20, 180); // On platform 3
+            spike->setPos(675 + i * 20, 180);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -195,7 +192,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(500 + i * 20, 180); // On platform 3
+            spike->setPos(500 + i * 20, 180);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -207,7 +204,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(0 + i * 20, 380); // On platform 3
+            spike->setPos(0 + i * 20, 380);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -218,7 +215,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(350 + i * 20, 380); // On platform 3
+            spike->setPos(350 + i * 20, 380);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -229,7 +226,7 @@ void GameScene::createSpikes(int sceneNumber)
             QPolygonF triangle;
             triangle << QPointF(0, 20) << QPointF(10, 0) << QPointF(20, 20);
             spike->setPolygon(triangle);
-            spike->setPos(750 + i * 20, 380); // On platform 3
+            spike->setPos(750 + i * 20, 380);
             spike->setBrush(QColor(200, 0, 0));
             spike->setPen(Qt::NoPen);
             addItem(spike);
@@ -257,7 +254,7 @@ GameScene::~GameScene()
 
 void GameScene::keyPressEvent(QKeyEvent *event)
 {
-    if (event->isAutoRepeat()) return; // avoid multiple repeats
+    if (event->isAutoRepeat()) return;
 
     switch (event->key()) {
     case Qt::Key_Left:
@@ -267,7 +264,7 @@ void GameScene::keyPressEvent(QKeyEvent *event)
         moveRight = true;
         break;
     case Qt::Key_Space:
-        if (!isJumping) {
+        if (!isJumping && player->y() >= 0) {
             verticalVelocity = -jumpForce;
             isJumping = true;
         }
@@ -308,68 +305,210 @@ void GameScene::movePlatforms()
     }
 }
 
+void GameScene::resetPlayer() {
+    // Reset player to starting position
+    player->setPos(0, 0);
+
+    // Reset movement variables
+    verticalVelocity = 0;
+    isJumping = false;
+    moveLeft = false;
+    moveRight = false;
+
+    qDebug() << "Player died and respawned!";
+}
+
 void GameScene::update() {
-    // Movement
-    if (moveLeft)
-        player->moveBy(-playerSpeed, 0);
-    if (moveRight)
-        player->moveBy(playerSpeed, 0);
+    // Horizontal movement with boundary checks
+    if (moveLeft) {
+        player->setX(qMax(0.0, player->x() - playerSpeed));
+    }
+    if (moveRight) {
+        player->setX(qMin(sceneRect().width() - player->rect().width(), player->x() + playerSpeed));
+    }
 
-    // Check collision with platforms and spikes first
-    bool onPlatform = false;
+    // Apply gravity
+    verticalVelocity += gravity;
+
+    // Proposed new Y position
+    qreal newY = player->y() + verticalVelocity;
+
+    // Prevent player from going above the top of the screen
+    if (newY < 0) {
+        newY = 0;
+        verticalVelocity = 0;
+    }
+
     QRectF playerRect = player->mapRectToScene(player->boundingRect());
-    playerRect.setHeight(playerRect.height() + 1); // Add 1 pixel to check below player
 
-    for (QGraphicsItem* item : items()) {
-        if (item == player || !item->isVisible()) continue;
 
-        QRectF itemRect = item->mapRectToScene(item->boundingRect());
-        
-        // Check for spike collision
-        if (item->type() == QGraphicsPolygonItem::Type) {
-            if (playerRect.intersects(itemRect)) {
-                // Reset player position and velocity
-                player->setPos(0, 0);
-                verticalVelocity = 0;
-                isJumping = false;
-                return;
+    qreal finalY = newY;
+
+    // Check collisions only if falling or moving vertically
+    if (verticalVelocity >= 0) {
+        for (QGraphicsItem* item : items()) {
+            if (item == player || !item->isVisible()) continue;
+
+            // Check for platform collisions
+            QGraphicsRectItem* platform = dynamic_cast<QGraphicsRectItem*>(item);
+            if (platform) {
+                QRectF platformRect = platform->mapRectToScene(platform->boundingRect());
+
+                bool horizontalOverlap = (playerRect.right() > platformRect.left()) &&
+                                         (playerRect.left() < platformRect.right());
+
+                if (horizontalOverlap) {
+                    qreal playerBottom = playerRect.bottom();
+                    qreal playerTop = playerRect.top();
+                    qreal platformTop = platformRect.top();
+                    qreal platformBottom = platformRect.bottom();
+
+                    if (playerBottom <= platformTop && (playerBottom + verticalVelocity) >= platformTop) {
+
+                        // landed = true;
+                        finalY = platformTop - player->boundingRect().height();
+                        verticalVelocity = 0;
+                        isJumping = false;
+
+                        // platform->setBrush(QBrush(Qt::red));
+
+                        break;
+                    }
+
+                    // if (playerTop <= platformBottom && playerTop + verticalVelocity >= platformBottom) {
+                    //     if (verticalVelocity > 0) { // Le joueur monte (heurt depuis le bas)
+                    //         qDebug() << "Collision avec le bas de la plateforme !";
+                    //         qDebug() << "playerTop: " << playerTop << "player bottom : " << playerBottom;
+                    //         qDebug() << "platformBottom: " << platformBottom;
+
+                    //         // Arrêter le mouvement vers le haut
+                    //         verticalVelocity = 0;
+
+                    //         // Repositionner le joueur juste sous la plateforme
+                    //         finalY = platformBottom;
+
+                    //         // Optionnel : changer la couleur de la plateforme
+                    //         platform->setBrush(Qt::blue); // Différente couleur pour heurt par le bas
+
+                    //         // Vous pourriez aussi ajouter un effet ou un son ici
+                    //     }
+                    // }
+                }
+            }
+
+            // Check for spike collisions
+            if (item->type() == QGraphicsPolygonItem::Type) {
+                QRectF spikeRect = item->mapRectToScene(item->boundingRect());
+                if (playerRect.intersects(spikeRect)) {
+                    resetPlayer();
+                    return;
+                }
             }
         }
-        
-        // Check if player is above a platform and falling
-        if (verticalVelocity >= 0 && // Only check when falling
-            playerRect.bottom() >= itemRect.top() &&
-            playerRect.bottom() <= itemRect.top() + 6 && // Small threshold for landing
-            playerRect.right() > itemRect.left() &&
-            playerRect.left() < itemRect.right()) {
-            
-            player->setY(itemRect.top() - player->rect().height());
-            verticalVelocity = 0;
-            isJumping = false;
-            onPlatform = true;
-            break;
-        }
     }
 
-    // Apply gravity and vertical movement if not on platform
-    if (!onPlatform) {
-        verticalVelocity += gravity;
-        player->moveBy(0, verticalVelocity);
+    // Check if player fell off the bottom of the screen
+    if (newY > sceneRect().height()) {
+        resetPlayer();
+        return;
     }
 
-    // Keep player within scene bounds
-    if (player->x() < 0)
-        player->setX(0);
-    if (player->x() > sceneRect().width() - player->rect().width())
-        player->setX(sceneRect().width() - player->rect().width());
-    if (player->y() < 0) {
-        player->setY(0);
-        verticalVelocity = 0;
-    }
-    if (player->y() > sceneRect().height()) {
-        // Reset player when falling below the scene
-        player->setPos(0, 0);
-        verticalVelocity = 0;
-        isJumping = false;
-    }
+    // Update player vertical position
+    player->setY(finalY);
 }
+
+
+// void GameScene::update() {
+//     // Mouvement horizontal
+//     if (moveLeft) {
+//         player->setX(qMax(0.0, player->x() - playerSpeed));
+//     }
+//     if (moveRight) {
+//         player->setX(qMin(sceneRect().width() - player->rect().width(), player->x() + playerSpeed));
+//     }
+
+//     // Application de la gravité
+//     verticalVelocity = qMin(verticalVelocity + gravity, 20.0);
+//     qreal newY = player->y() + verticalVelocity;
+//     QRectF playerRect = player->mapRectToScene(player->boundingRect());
+//     qreal finalY = newY;
+
+//     // Constantes
+//     const qreal LANDING_TOLERANCE = 1.0;  // Tolérance pour l'atterrissage
+//     const qreal SIDE_TOLERANCE = 0.5;     // Tolérance pour les côtés
+//     const qreal RESTITUTION = 0.4;
+
+//     bool onGround = false;
+
+//     // Détection des collisions
+//     for (QGraphicsItem* item : items()) {
+//         if (item == player || !item->isVisible()) continue;
+
+//         // Collision avec plateforme
+//         if (QGraphicsRectItem* platform = dynamic_cast<QGraphicsRectItem*>(item)) {
+//             QRectF platformRect = platform->mapRectToScene(platform->boundingRect());
+
+//             // Vérification du chevauchement
+//             if (playerRect.intersects(platformRect)) {
+//                 qreal playerBottom = playerRect.bottom();
+//                 qreal platformTop = platformRect.top();
+
+//                 // Collision par le haut (atterrissage)
+//                 if (verticalVelocity >= 0 &&
+//                     playerBottom <= platformTop + LANDING_TOLERANCE) {
+
+//                     finalY = platformTop - player->boundingRect().height();
+//                     verticalVelocity = 0;
+//                     isJumping = false;
+//                     onGround = true;
+//                     platform->setBrush(Qt::red);
+//                     break;
+//                 }
+
+//                 // Collision par le bas
+//                 if (verticalVelocity < 0 &&
+//                     player->y() <= platformRect.bottom()) {
+//                     verticalVelocity = -verticalVelocity * RESTITUTION;
+//                     platform->setBrush(Qt::blue);
+//                 }
+
+//                 // Collisions latérales
+//                 if (!onGround) {
+//                     // Gauche
+//                     if (playerRect.right() > platformRect.left() &&
+//                         playerRect.left() < platformRect.left()) {
+//                         player->setX(platformRect.left() - player->boundingRect().width());
+//                     }
+//                     // Droite
+//                     else if (playerRect.left() < platformRect.right() &&
+//                              playerRect.right() > platformRect.right()) {
+//                         player->setX(platformRect.right());
+//                     }
+//                 }
+//             }
+//         }
+
+//         // Collision avec pics
+//         if (item->type() == QGraphicsPolygonItem::Type) {
+//             QRectF spikeRect = item->mapRectToScene(item->boundingRect());
+//             if (playerRect.intersects(spikeRect)) {
+//                 resetPlayer();
+//                 return;
+//             }
+//         }
+//     }
+
+//     // Limites de l'écran
+//     if (newY < 0) {
+//         finalY = 0;
+//         verticalVelocity = 0;
+//     }
+
+//     if (newY > sceneRect().height()) {
+//         resetPlayer();
+//         return;
+//     }
+
+//     // Mise à jour position
+//     player->setY(finalY);
+// }
